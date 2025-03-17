@@ -2,7 +2,7 @@ import axios from "axios"
 
 const api = axios.create({
    
-    baseURL:"https://chatapp-server-xfd9.onrender.com/"
+    baseURL : "http://localhost:5000",
 
 });
 
