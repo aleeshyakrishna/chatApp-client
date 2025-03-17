@@ -7,7 +7,7 @@ class SocketService {
 
     connect(token) {
         if (!this.socket) {
-            this.socket = io("http://localhost:5000", {
+            this.socket = io("https://chatapp-server-xfd9.onrender.com/", {
                 auth: { token }, 
                 transports: ["websocket"],
             });
