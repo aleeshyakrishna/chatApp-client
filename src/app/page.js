@@ -1,103 +1,123 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { loginStart, loginSuccess, loginFailure } from '../store/authSlice';
+import { useRouter } from 'next/navigation';
+import { toast, Toaster } from 'react-hot-toast';
+import api from '../../utils/baseUrl/baseUrl.js';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const dispatch = useDispatch();
+  const router = useRouter();
+  const { isAuthenticated, loading, error } = useSelector((state) => state.auth);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push('/chat');
+    }
+  }, [isAuthenticated, router]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    dispatch(loginStart());
+
+    const loadingToast = toast.loading("Logging in...");
+
+    try {
+      const response = await api.post('/user/user-login', { email, password });
+
+      if (response.status === 200) {
+        
+        
+        const { user, token } = response.data.data;
+        dispatch(loginSuccess({token,user}));
+        toast.success("Login successful!", { id: loadingToast });
+        router.push('/chat')
+      }
+    } catch (error) {
+      
+
+      let errorMessage = "Something went wrong, please try again.";
+
+      if (error.response) {
+        switch (error.response.status) {
+          case 400:
+            errorMessage = "Invalid request. Please check your input.";
+            break;
+          case 401:
+            errorMessage = "Unauthorized! Invalid email or password.";
+            break;
+          case 403:
+            errorMessage = "Forbidden! You do not have access.";
+            break;
+          case 404:
+            errorMessage = "User not found!";
+            break;
+          case 500:
+            errorMessage = "Server error! Please try again later.";
+            break;
+          default:
+            errorMessage = error.response.data?.message || "An unknown error occurred.";
+        }
+      }
+
+      toast.error(errorMessage, { id: loadingToast });
+
+      dispatch(loginFailure(errorMessage));
+    }
+  };
+
+  return (
+    <>
+      <Toaster position="top-right" reverseOrder={false} />
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+          <h1 className="text-2xl font-bold mb-6 text-center text-black">Login</h1>
+
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit}>
+            <div className="mb-4">
+              <label className="block text-gray-700 text-sm font-bold mb-2">Email</label>
+              <input
+                type="text"
+                className="shadow border rounded w-full py-2 px-3 text-gray-700"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                disabled={loading}
+              />
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-gray-700 text-sm font-bold mb-2">Password</label>
+              <input
+                type="password"
+                className="shadow border rounded w-full py-2 px-3 text-gray-700"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                disabled={loading}
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full"
+              disabled={loading}
+            >
+              {loading ? 'Processing...' : 'Login'}
+            </button>
+          </form>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      </div>
+    </>
   );
 }
